@@ -1,5 +1,5 @@
 mod tokens;
-use proc_macro::{token_stream::IntoIter, *};
+use proc_macro::*;
 use tokens::Tokens;
 
 #[proc_macro]
@@ -16,15 +16,15 @@ pub fn quote(input: TokenStream) -> TokenStream {
         _ => panic!("expected `{{`"),
     };
     output.group('{', |s| {
-        expend(input.into_iter(), s, target);
+        expend(input, s, target);
     });
     output
 }
 
-fn expend(input: IntoIter, s: &mut TokenStream, targer: TokenTree) {
-    let mut input = input.peekable();
+fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
+    let mut input = input.into_iter().peekable();
     while let Some(tt) = input.next() {
-        s.add(targer.clone());
+        s.add(target.clone());
         s.punct('.');
         match tt {
             TokenTree::Group(group) => {
@@ -42,7 +42,7 @@ fn expend(input: IntoIter, s: &mut TokenStream, targer: TokenTree) {
                     s.punct('|');
                     s.group('{', |s| {
                         let targer = Ident::new("__s", Span::call_site());
-                        expend(group.stream().into_iter(), s, targer.into());
+                        expend(group.stream(), s, targer.into());
                     });
                 });
             }
