@@ -63,18 +63,17 @@ pub trait IntoTokens {
 
 impl<'a, T> IntoTokens for &'a T
 where
-    T: ?Sized + IntoTokens + Clone,
+    T: ?Sized + IntoTokens + Copy,
 {
     fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(T::clone(self), s)
+        T::into_tokens(*self, s)
     }
 }
 
 impl<T: IntoTokens> IntoTokens for Option<T> {
     fn into_tokens(self, s: &mut TokenStream) {
-        match self {
-            Some(v) => T::into_tokens(v, s),
-            None => {}
+        if let Some(v) = self {
+            T::into_tokens(v, s)
         }
     }
 }
@@ -132,9 +131,9 @@ impl IntoTokens for TokenStream {
     }
 }
 
-impl<'a, T: ?Sized + IntoTokens + Clone> IntoTokens for &'a mut T {
+impl<'a, T: ?Sized + IntoTokens + Copy> IntoTokens for &'a mut T {
     fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(self.clone(), s)
+        T::into_tokens(*self, s)
     }
 }
 

@@ -3,6 +3,16 @@ An alternative lightweight version of [quote](https://github.com/dtolnay/quote).
 Unlike `quote`, this library avoids cloning whenever possible. 
 
 
+### Example
+
+Add it as a dependency to your Rust project by adding the following line to your `Cargo.toml` file:
+
+```toml
+[dependencies]
+quote2 = "0.2"
+```
+
+
 ```rust
 use quote2::{proc_macro2::TokenStream, quote, TokensExt};
 

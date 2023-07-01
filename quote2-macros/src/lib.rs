@@ -24,7 +24,6 @@ pub fn quote(input: TokenStream) -> TokenStream {
 fn expend(input: IntoIter, s: &mut TokenStream, targer: TokenTree) {
     let mut input = input.peekable();
     while let Some(tt) = input.next() {
-        let targer = &targer;
         s.add(targer.clone());
         s.punct('.');
         match tt {
