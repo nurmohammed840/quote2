@@ -1,6 +1,6 @@
 An alternative lightweight version of [quote](https://github.com/dtolnay/quote).
 
-Unlike `quote', this library avoids cloning whenever possible. 
+Unlike `quote`, this library avoids cloning whenever possible. 
 
 
 ```rust
