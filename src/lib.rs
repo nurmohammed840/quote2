@@ -3,9 +3,12 @@ pub use proc_macro2;
 
 use proc_macro2::*;
 pub use quote2_macros::quote;
-use std::{borrow::Cow, iter, rc::Rc};
+use std::{
+    iter,
+    ops::{Deref, DerefMut},
+};
 
-impl TokensExt for TokenStream {
+impl Quote for TokenStream {
     fn add<U>(&mut self, token: U)
     where
         U: Into<TokenTree>,
@@ -18,7 +21,9 @@ impl TokensExt for TokenStream {
     }
 }
 
-pub trait TokensExt {
+pub trait Quote {
+    fn tokens(&mut self, _: impl IntoTokens);
+
     fn add<U>(&mut self, token: U)
     where
         U: Into<TokenTree>;
@@ -26,6 +31,7 @@ pub trait TokensExt {
     fn punct_join(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Joint));
     }
+
     fn punct(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Alone));
     }
@@ -34,136 +40,73 @@ pub trait TokensExt {
         self.add(Ident::new(name, Span::call_site()));
     }
 
+    fn group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
+        self.add(group(delimiter, f).0);
+    }
+
     fn ident_span(&mut self, name: &str, span: Span) {
         self.add(Ident::new(name, span));
     }
-
-    fn group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
-        let delimiter = match delimiter {
-            '{' => Delimiter::Brace,
-            '[' => Delimiter::Bracket,
-            '(' => Delimiter::Parenthesis,
-            _ => Delimiter::None,
-        };
-        self.add(group(delimiter, f));
-    }
-
-    fn tokens(&mut self, _: impl IntoTokens);
 }
 
-pub fn group(delimiter: Delimiter, f: impl FnOnce(&mut TokenStream)) -> Group {
+pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Owned<Group> {
     let mut stream = TokenStream::new();
     f(&mut stream);
-    Group::new(delimiter, stream)
+    let delimiter = match delimiter {
+        '{' => Delimiter::Brace,
+        '[' => Delimiter::Bracket,
+        '(' => Delimiter::Parenthesis,
+        _ => Delimiter::None,
+    };
+    Owned(Group::new(delimiter, stream))
 }
 
 pub trait IntoTokens {
     fn into_tokens(self, s: &mut TokenStream);
 }
 
-impl<'a, T> IntoTokens for &'a T
-where
-    T: ?Sized + IntoTokens + Copy,
-{
+impl<T: quote::ToTokens> IntoTokens for T {
     fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(*self, s)
+        self.to_tokens(s)
     }
 }
 
-impl<T: IntoTokens> IntoTokens for Option<T> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        if let Some(v) = self {
-            T::into_tokens(v, s)
-        }
+#[derive(Debug, Clone)]
+#[doc(hidden)]
+pub struct Owned<T>(pub T);
+
+impl<T> Deref for Owned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-macro_rules! impl_for {
-    [@lit $($lit: ty => $name: ident)*] => {$(
-        impl IntoTokens for $lit {
-            fn into_tokens(self, s: &mut TokenStream) {
-                s.add(Literal::$name(self));
-            }
-        }
-    )*};
-    [@struct $($ty: ty)*] => {$(
-        impl IntoTokens for $ty {
-            fn into_tokens(self, s: &mut TokenStream) {
-                s.add(self)
-            }
-        }
-    )*};
-}
-
-impl_for! {@struct Group Ident Punct Literal TokenTree }
-impl_for! {
-    @lit
-    u8 => u8_suffixed
-    u16 => u16_suffixed
-    u32 => u32_suffixed
-    u64 => u64_suffixed
-    u128 => u128_suffixed
-
-    i8 => i8_suffixed
-    i16 => i16_suffixed
-    i32 => i32_suffixed
-    i64 => i64_suffixed
-    i128 => i128_suffixed
-
-    f32 => f32_suffixed
-    f64 => f64_suffixed
-
-    &str => string
-    char => character
-    &[u8] => byte_string
-}
-
-impl IntoTokens for bool {
-    fn into_tokens(self, s: &mut TokenStream) {
-        let word = if self { "true" } else { "false" };
-        s.add(Ident::new(word, Span::call_site()));
+impl<T> DerefMut for Owned<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
-impl IntoTokens for TokenStream {
+impl IntoTokens for Owned<Group> {
     fn into_tokens(self, s: &mut TokenStream) {
-        s.extend(iter::once(self));
+        s.extend(iter::once(TokenTree::Group(self.0)));
     }
 }
 
-impl<'a, T: ?Sized + IntoTokens + Copy> IntoTokens for &'a mut T {
+impl IntoTokens for Owned<TokenStream> {
     fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(*self, s)
-    }
-}
-
-impl<'a, T: ?Sized + IntoTokens + Clone> IntoTokens for Cow<'a, T> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        match self {
-            Cow::Borrowed(v) => T::into_tokens(T::clone(v), s),
-            Cow::Owned(v) => T::into_tokens(v, s),
-        }
-    }
-}
-
-impl<T: IntoTokens> IntoTokens for Box<T> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(*self, s)
-    }
-}
-
-impl<T: IntoTokens + Clone> IntoTokens for Rc<T> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        T::into_tokens(T::clone(&self), s)
+        s.extend(iter::once(self.0));
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Quote<F>(F)
+pub struct QuoteFn<F>(F)
 where
     F: for<'a> FnOnce(&'a mut TokenStream);
 
-impl<F> IntoTokens for Quote<F>
+impl<F> IntoTokens for QuoteFn<F>
 where
     F: for<'a> FnOnce(&'a mut TokenStream),
 {
@@ -172,9 +115,9 @@ where
     }
 }
 
-pub fn quote<F>(f: F) -> Quote<F>
+pub fn quote<F>(f: F) -> QuoteFn<F>
 where
     F: for<'a> FnOnce(&'a mut TokenStream),
 {
-    Quote(f)
+    QuoteFn(f)
 }

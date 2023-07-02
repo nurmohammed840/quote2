@@ -3,7 +3,7 @@ members = ["quote2-macros"]
 
 [package]
 name = "quote2"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 license = "MIT"
@@ -15,5 +15,6 @@ description = "An alternative lightweight version of quote"
 exclude = ["/quote2-macros",  ".*"]
 
 [dependencies]
-proc-macro2 = "1"
-quote2-macros = { version = "0.2", path = "./quote2-macros" }
+proc-macro2 = { version = "1" }
+quote = { version = "1", default-features = false }
+quote2-macros = { version = "0.3", path = "./quote2-macros" }

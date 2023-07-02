@@ -14,7 +14,7 @@ quote2 = "0.2"
 
 
 ```rust
-use quote2::{proc_macro2::TokenStream, quote, TokensExt};
+use quote2::{proc_macro2::TokenStream, quote, Quote};
 
 let mut tokens = TokenStream::new();
 let body = quote(|tokens| {

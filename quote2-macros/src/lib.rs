@@ -15,7 +15,8 @@ pub fn quote(input: TokenStream) -> TokenStream {
         Some(TokenTree::Group(g)) => g.stream(),
         _ => panic!("expected `{{`"),
     };
-    output.group('{', |s| {
+
+    output.group(Delimiter::Brace, |s| {
         expend(input, s, target);
     });
     output
@@ -29,7 +30,7 @@ fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
         match tt {
             TokenTree::Group(group) => {
                 s.ident("group");
-                s.group('(', |s| {
+                s.group(Delimiter::Parenthesis, |s| {
                     s.ch(match group.delimiter() {
                         Delimiter::None => '_',
                         Delimiter::Brace => '{',
@@ -40,7 +41,7 @@ fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
                     s.punct('|');
                     s.ident("__s");
                     s.punct('|');
-                    s.group('{', |s| {
+                    s.group(Delimiter::Brace, |s| {
                         let targer = Ident::new("__s", Span::call_site());
                         expend(group.stream(), s, targer.into());
                     });
@@ -48,7 +49,7 @@ fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
             }
             TokenTree::Ident(ident) => {
                 s.ident("ident");
-                s.group('(', |s| s.str(&ident.to_string()))
+                s.group(Delimiter::Parenthesis, |s| s.str(&ident.to_string()))
             }
             TokenTree::Punct(punct) => {
                 let ch = punct.as_char();
@@ -56,7 +57,7 @@ fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
                     if let Some(TokenTree::Ident(_)) = input.peek() {
                         let Some(TokenTree::Ident(var)) = input.next() else { unreachable!() };
                         s.ident("tokens");
-                        s.group('(', |s| s.add(var));
+                        s.group(Delimiter::Parenthesis, |s| s.add(var));
                         s.punct(';');
                         continue;
                     }
@@ -65,11 +66,11 @@ fn expend(input: TokenStream, s: &mut TokenStream, target: TokenTree) {
                     Spacing::Joint => s.ident("punct_join"),
                     Spacing::Alone => s.ident("punct"),
                 }
-                s.group('(', |s| s.ch(ch));
+                s.group(Delimiter::Parenthesis, |s| s.ch(ch));
             }
             TokenTree::Literal(lit) => {
                 s.ident("tokens");
-                s.group('(', |s| s.add(lit));
+                s.group(Delimiter::Parenthesis, |s| s.add(lit));
             }
         }
         s.punct(';');

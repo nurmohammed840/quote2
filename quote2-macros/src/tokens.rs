@@ -26,15 +26,9 @@ pub trait Tokens {
         self.add(Ident::new(name, Span::call_site()));
     }
 
-    fn group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
+    fn group(&mut self, delimiter: Delimiter, f: impl FnOnce(&mut TokenStream)) {
         let mut stream = TokenStream::new();
         f(&mut stream);
-        let delimiter = match delimiter {
-            '{' => Delimiter::Brace,
-            '[' => Delimiter::Bracket,
-            '(' => Delimiter::Parenthesis,
-            _ => Delimiter::None,
-        };
         self.add(Group::new(delimiter, stream));
     }
 
