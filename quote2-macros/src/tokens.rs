@@ -32,11 +32,7 @@ pub trait Tokens {
         self.add(Group::new(delimiter, stream));
     }
 
-    fn ch(&mut self, ch: char) {
+    fn char(&mut self, ch: char) {
         self.add(Literal::character(ch));
-    }
-
-    fn str(&mut self, s: &str) {
-        self.add(Literal::string(s));
     }
 }

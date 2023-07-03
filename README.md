@@ -9,7 +9,7 @@ Add it as a dependency to your Rust project by adding the following line to your
 
 ```toml
 [dependencies]
-quote2 = "0.2"
+quote2 = "0.3"
 ```
 
 

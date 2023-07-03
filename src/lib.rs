@@ -36,6 +36,22 @@ pub trait Quote {
         self.add(Punct::new(ch, Spacing::Alone));
     }
 
+    fn punct2(&mut self, ch: char) {
+        self.add(Punct::new(ch, Spacing::Joint));
+        self.add(Punct::new(ch, Spacing::Alone));
+    }
+
+    fn punct_joined(&mut self, ch: char, ch2: char) {
+        self.add(Punct::new(ch, Spacing::Joint));
+        self.add(Punct::new(ch2, Spacing::Alone));
+    }
+
+    fn idents(&mut self, names: &[&str]) {
+        for name in names {
+            self.ident(name);
+        }
+    }
+
     fn ident(&mut self, name: &str) {
         self.add(Ident::new(name, Span::call_site()));
     }
