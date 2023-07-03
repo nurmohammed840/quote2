@@ -24,7 +24,7 @@ pub fn quote(input: TokenStream) -> TokenStream {
 fn expend(input: TokenStream, o: &mut TokenStream, var: TokenTree) {
     let mut input = input.into_iter();
 
-    let mut idents_len: u16 = 0; // 0 = None, 1 = Mono, 2 = Poly;
+    let mut idents_len: u8 = 0; // 0 = None, 1 = Mono, 2 = Poly;
     let mut idents = TokenStream::new();
 
     let mut peek = input.next();
@@ -44,24 +44,7 @@ fn expend(input: TokenStream, o: &mut TokenStream, var: TokenTree) {
         }
         if idents_len != 0 {
             let idents = mem::replace(&mut idents, TokenStream::new());
-
-            o.add(var.clone());
-            o.punct('.');
-
-            match idents_len {
-                1 => {
-                    o.ident("ident");
-                    o.add(Group::new(Delimiter::Parenthesis, idents))
-                }
-                _ => {
-                    o.ident("idents");
-                    o.group(Delimiter::Parenthesis, |o| {
-                        o.punct('&');
-                        o.add(Group::new(Delimiter::Bracket, idents));
-                    })
-                }
-            }
-            o.punct(';');
+            write_idents(o, var.clone(), idents_len, idents);
             idents_len = 0;
         }
 
@@ -127,4 +110,27 @@ fn expend(input: TokenStream, o: &mut TokenStream, var: TokenTree) {
         }
         o.punct(';');
     }
+    if idents_len != 0 {
+        write_idents(o, var, idents_len, idents);
+    }
+}
+
+fn write_idents(o: &mut TokenStream, var: TokenTree, idents_len: u8, idents: TokenStream) {
+    o.add(var);
+    o.punct('.');
+
+    match idents_len {
+        1 => {
+            o.ident("ident");
+            o.add(Group::new(Delimiter::Parenthesis, idents))
+        }
+        _ => {
+            o.ident("idents");
+            o.group(Delimiter::Parenthesis, |o| {
+                o.punct('&');
+                o.add(Group::new(Delimiter::Bracket, idents));
+            })
+        }
+    }
+    o.punct(';');
 }

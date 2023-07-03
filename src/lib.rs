@@ -57,7 +57,7 @@ pub trait Quote {
     }
 
     fn group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
-        self.add(group(delimiter, f).0);
+        self.add(group(delimiter, f));
     }
 
     fn ident_span(&mut self, name: &str, span: Span) {
@@ -65,7 +65,7 @@ pub trait Quote {
     }
 }
 
-pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Owned<Group> {
+pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Group {
     let mut stream = TokenStream::new();
     f(&mut stream);
     let delimiter = match delimiter {
@@ -74,7 +74,7 @@ pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Owned<Group> 
         '(' => Delimiter::Parenthesis,
         _ => Delimiter::None,
     };
-    Owned(Group::new(delimiter, stream))
+    Group::new(delimiter, stream)
 }
 
 pub trait IntoTokens {
@@ -118,13 +118,11 @@ impl IntoTokens for Owned<TokenStream> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct QuoteFn<F>(F)
-where
-    F: for<'a> FnOnce(&'a mut TokenStream);
+pub struct QuoteFn<F>(pub F);
 
 impl<F> IntoTokens for QuoteFn<F>
 where
-    F: for<'a> FnOnce(&'a mut TokenStream),
+    F: FnOnce(&mut TokenStream),
 {
     fn into_tokens(self, s: &mut TokenStream) {
         self.0(s)
@@ -133,7 +131,7 @@ where
 
 pub fn quote<F>(f: F) -> QuoteFn<F>
 where
-    F: for<'a> FnOnce(&'a mut TokenStream),
+    F: FnOnce(&mut TokenStream),
 {
     QuoteFn(f)
 }
