@@ -4,8 +4,9 @@ pub use proc_macro2;
 use proc_macro2::*;
 pub use quote2_macros::quote;
 use std::{
-    iter,
+    fmt, iter,
     ops::{Deref, DerefMut},
+    str::FromStr,
 };
 
 impl Quote for TokenStream {
@@ -16,51 +17,55 @@ impl Quote for TokenStream {
         self.extend(iter::once(token.into()))
     }
 
-    fn tokens(&mut self, tts: impl IntoTokens) {
+    fn add_tokens(&mut self, tts: impl IntoTokens) {
         tts.into_tokens(self)
     }
 }
 
 pub trait Quote {
-    fn tokens(&mut self, _: impl IntoTokens);
+    fn add_tokens(&mut self, _: impl IntoTokens);
 
     fn add<U>(&mut self, token: U)
     where
         U: Into<TokenTree>;
 
-    fn punct_join(&mut self, ch: char) {
+    fn add_punct_join(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Joint));
     }
 
-    fn punct(&mut self, ch: char) {
+    fn add_punct(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Alone));
     }
 
-    fn punct2(&mut self, ch: char) {
+    fn add_punct2(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Joint));
         self.add(Punct::new(ch, Spacing::Alone));
     }
 
-    fn punct_joined(&mut self, ch: char, ch2: char) {
+    fn add_puncts(&mut self, ch: char, ch2: char) {
         self.add(Punct::new(ch, Spacing::Joint));
         self.add(Punct::new(ch2, Spacing::Alone));
     }
 
-    fn idents(&mut self, names: &[&str]) {
+    fn add_idents(&mut self, names: &[&str]) {
         for name in names {
-            self.ident(name);
+            self.add_ident(name);
         }
     }
 
-    fn ident(&mut self, name: &str) {
+    fn add_ident(&mut self, name: &str) {
         self.add(Ident::new(name, Span::call_site()));
     }
 
-    fn group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
+    fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
         self.add(group(delimiter, f));
     }
 
-    fn ident_span(&mut self, name: &str, span: Span) {
+    fn add_parsed_lit(&mut self, s: &str) {
+        self.add(Literal::from_str(s).expect("invalid literal"));
+    }
+
+    fn add_ident_span(&mut self, name: &str, span: Span) {
         self.add(Ident::new(name, span));
     }
 }
@@ -87,40 +92,17 @@ impl<T: quote::ToTokens> IntoTokens for T {
     }
 }
 
-#[derive(Debug, Clone)]
-#[doc(hidden)]
-pub struct Owned<T>(pub T);
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Token<T>(pub T);
 
-impl<T> Deref for Owned<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub fn quote<F>(f: F) -> Token<F>
+where
+    F: FnOnce(&mut TokenStream),
+{
+    Token(f)
 }
 
-impl<T> DerefMut for Owned<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl IntoTokens for Owned<Group> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        s.extend(iter::once(TokenTree::Group(self.0)));
-    }
-}
-
-impl IntoTokens for Owned<TokenStream> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        s.extend(iter::once(self.0));
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct QuoteFn<F>(pub F);
-
-impl<F> IntoTokens for QuoteFn<F>
+impl<F> IntoTokens for Token<F>
 where
     F: FnOnce(&mut TokenStream),
 {
@@ -129,9 +111,44 @@ where
     }
 }
 
-pub fn quote<F>(f: F) -> QuoteFn<F>
-where
-    F: FnOnce(&mut TokenStream),
-{
-    QuoteFn(f)
+impl<T: IntoTokens> IntoTokens for Token<Option<T>> {
+    fn into_tokens(self, s: &mut TokenStream) {
+        if let Some(v) = self.0 {
+            T::into_tokens(v, s)
+        }
+    }
+}
+
+impl IntoTokens for Token<Group> {
+    fn into_tokens(self, s: &mut TokenStream) {
+        s.extend(iter::once(TokenTree::Group(self.0)));
+    }
+}
+
+impl IntoTokens for Token<TokenStream> {
+    fn into_tokens(self, s: &mut TokenStream) {
+        s.extend(iter::once(self.0));
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for Token<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        T::fmt(&self.0, f)
+    }
+}
+
+impl<T> Deref for Token<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for Token<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }

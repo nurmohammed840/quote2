@@ -9,14 +9,13 @@ Add it as a dependency to your Rust project by adding the following line to your
 
 ```toml
 [dependencies]
-quote2 = "0.5"
+quote2 = "0.7"
 ```
 
 
 ```rust
 use quote2::{proc_macro2::TokenStream, quote, Quote};
 
-let mut tokens = TokenStream::new();
 let body = quote(|tokens| {
     for i in 0..3 {
         quote!(tokens, {
@@ -24,6 +23,8 @@ let body = quote(|tokens| {
         });
     }
 });
+
+let mut tokens = TokenStream::new();
 quote!(tokens, {
     fn name() {
         #body

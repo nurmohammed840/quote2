@@ -3,7 +3,7 @@ members = ["quote2-macros"]
 
 [package]
 name = "quote2"
-version = "0.5.0"
+version = "0.7.0"
 edition = "2021"
 
 license = "MIT"
@@ -17,4 +17,4 @@ exclude = ["/quote2-macros",  ".*", "/tests"]
 [dependencies]
 proc-macro2 = "1"
 quote = { version = "1", default-features = false }
-quote2-macros = { version = "0.5", path = "./quote2-macros" }
+quote2-macros = { version = "0.7", path = "./quote2-macros" }
