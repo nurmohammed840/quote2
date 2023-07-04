@@ -132,7 +132,7 @@ impl Idents {
     }
 
     fn take(&mut self) -> Self {
-        mem::replace(self, Self::default())
+        mem::take(self)
     }
 
     fn is_empty(&self) -> bool {
