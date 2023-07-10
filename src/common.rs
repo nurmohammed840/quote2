@@ -28,6 +28,13 @@ macro_rules! impl_quote {
             }
         }
 
+        pub fn quote<F>(f: F) -> Token<F>
+        where
+            F: FnOnce(&mut TokenStream),
+        {
+            Token(f)
+        }
+
         pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Group {
             let mut stream = TokenStream::new();
             f(&mut stream);
@@ -53,4 +60,5 @@ macro_rules! impl_quote {
         }
     };
 }
+#[allow(unused_imports)]
 pub(crate) use impl_quote;

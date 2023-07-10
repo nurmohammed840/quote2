@@ -54,14 +54,17 @@ fn expend(input: TokenStream, o: &mut TokenStream, var: Ident) {
                             && next.as_char() != '#' =>
                     {
                         let next_ch = next.as_char();
-                        let is_same = ch == next_ch;
                         peek = input.next();
-                        o.ident(if is_same { "add_punct2" } else { "add_puncts" });
+                        o.ident("add_puncts");
                         o.group(Delimiter::Parenthesis, |o| {
-                            o.char(ch);
-                            if !is_same {
-                                o.punct(',');
-                                o.char(next_ch);
+                            if ch == next_ch {
+                                o.char(ch);
+                            } else {
+                                o.group(Delimiter::Parenthesis, |o| {
+                                    o.char(ch);
+                                    o.punct(',');
+                                    o.char(next_ch);
+                                })
                             }
                         });
                     }

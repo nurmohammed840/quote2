@@ -14,7 +14,13 @@ description = "An alternative lightweight version of quote"
 
 exclude = ["/quote2-macros",  ".*", "/tests"]
 
+[features]
+default = []
+proc-macro = []
+proc-macro2 = ["dep:proc-macro2", "dep:quote"]
+
 [dependencies]
-proc-macro2 = "1"
-quote = { version = "1", default-features = false }
+proc-macro2 = { version = "1", optional = true }
+quote = { version = "1", default-features = false, optional = true }
+
 quote2-macros = { version = "0.7", path = "./quote2-macros" }

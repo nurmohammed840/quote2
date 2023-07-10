@@ -1,7 +1,9 @@
 #![doc = include_str!("../README.md")]
 
 mod common;
+#[cfg(feature = "proc-macro")]
 pub mod proc_macro;
+#[cfg(feature = "proc-macro2")]
 pub mod proc_macro2;
 
 pub use quote2_macros::quote;
@@ -24,20 +26,35 @@ pub trait Quote {
         tokens.into_tokens(self);
     }
 
-    fn add_punct2(&mut self, ch: char) {
-        self.add_punct_join(ch);
-        self.add_punct(ch);
-    }
-
-    fn add_puncts(&mut self, ch: char, ch2: char) {
-        self.add_punct_join(ch);
-        self.add_punct(ch2);
+    fn add_puncts(&mut self, p: impl AddPuncts)
+    where
+        Self: Sized,
+    {
+        p.add_puncts(self)
     }
 
     fn add_idents(&mut self, names: &[&str]) {
         for name in names {
             self.add_ident(name);
         }
+    }
+}
+
+pub trait AddPuncts {
+    fn add_puncts(self, this: &mut impl Quote);
+}
+
+impl AddPuncts for char {
+    fn add_puncts(self, this: &mut impl Quote) {
+        this.add_punct_join(self);
+        this.add_punct(self);
+    }
+}
+
+impl AddPuncts for (char, char) {
+    fn add_puncts(self, this: &mut impl Quote) {
+        this.add_punct_join(self.0);
+        this.add_punct(self.1);
     }
 }
 
