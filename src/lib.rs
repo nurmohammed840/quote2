@@ -5,7 +5,10 @@ pub mod proc_macro;
 pub mod proc_macro2;
 
 pub use quote2_macros::quote;
-use std::fmt;
+use std::{
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 pub trait Quote {
     fn add_punct_join(&mut self, ch: char);
@@ -14,7 +17,10 @@ pub trait Quote {
     fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut Self));
     fn add_parsed_lit(&mut self, s: &str);
 
-    fn add_tokens(&mut self, tokens: impl IntoTokens<Stream = Self>) {
+    fn add_tokens(&mut self, tokens: impl IntoTokens<Self>)
+    where
+        Self: Sized,
+    {
         tokens.into_tokens(self);
     }
 
@@ -35,38 +41,36 @@ pub trait Quote {
     }
 }
 
-pub trait IntoTokens {
-    type Stream;
-    fn into_tokens(self, s: &mut Self::Stream);
+pub trait IntoTokens<Q: Quote> {
+    fn into_tokens(self, s: &mut Q);
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Token<T>(pub T);
 
-// pub fn quote<F, Q: Quote>(f: F) -> Token<F>
-// where
-//     F: FnOnce(&mut Q),
-// {
-//     Token(f)
-// }
-
-impl<F, Q: Quote> IntoTokens for Token<F>
+pub fn quote<F, Q: Quote>(f: F) -> Token<F>
 where
     F: FnOnce(&mut Q),
 {
-    type Stream = Q;
+    Token(f)
+}
+
+impl<F, Q: Quote> IntoTokens<Q> for Token<F>
+where
+    F: FnOnce(&mut Q),
+{
     fn into_tokens(self, s: &mut Q) {
         self.0(s)
     }
 }
 
-// impl<T: IntoTokens<Q>, Q: Quote> IntoTokens<Q> for Token<Option<T>> {
-//     fn into_tokens(self, s: &mut Q) {
-//         if let Some(v) = self.0 {
-//             T::into_tokens(v, s)
-//         }
-//     }
-// }
+impl<T: IntoTokens<Q>, Q: Quote> IntoTokens<Q> for Token<Option<T>> {
+    fn into_tokens(self, s: &mut Q) {
+        if let Some(v) = self.0 {
+            T::into_tokens(v, s)
+        }
+    }
+}
 
 impl<T: fmt::Display> fmt::Display for Token<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,7 +78,7 @@ impl<T: fmt::Display> fmt::Display for Token<T> {
     }
 }
 
-impl<T> std::ops::Deref for Token<T> {
+impl<T> Deref for Token<T> {
     type Target = T;
 
     #[inline]
@@ -83,7 +87,7 @@ impl<T> std::ops::Deref for Token<T> {
     }
 }
 
-impl<T> std::ops::DerefMut for Token<T> {
+impl<T> DerefMut for Token<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0

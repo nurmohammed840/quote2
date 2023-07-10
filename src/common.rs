@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! impl_quote {
     () => {
-        use super::{IntoTokens, Quote};
+        use super::{IntoTokens, Quote, Token};
         use std::str::FromStr;
 
         impl Quote for TokenStream {
@@ -38,6 +38,18 @@ macro_rules! impl_quote {
                 _ => Delimiter::None,
             };
             Group::new(delimiter, stream)
+        }
+
+        impl IntoTokens<TokenStream> for Token<Group> {
+            fn into_tokens(self, s: &mut TokenStream) {
+                s.extend(Some(TokenTree::Group(self.0)))
+            }
+        }
+
+        impl IntoTokens<TokenStream> for Token<TokenStream> {
+            fn into_tokens(self, s: &mut TokenStream) {
+                s.extend(Some(self.0));
+            }
         }
     };
 }
