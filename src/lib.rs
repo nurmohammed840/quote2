@@ -1,50 +1,31 @@
 #![doc = include_str!("../README.md")]
-pub use proc_macro2;
 
-use proc_macro2::*;
+mod common;
+pub mod proc_macro;
+pub mod proc_macro2;
+
 pub use quote2_macros::quote;
-use std::{
-    fmt, iter,
-    ops::{Deref, DerefMut},
-    str::FromStr,
-};
-
-impl Quote for TokenStream {
-    fn add<U>(&mut self, token: U)
-    where
-        U: Into<TokenTree>,
-    {
-        self.extend(iter::once(token.into()))
-    }
-
-    fn add_tokens(&mut self, tts: impl IntoTokens) {
-        tts.into_tokens(self)
-    }
-}
+use std::fmt;
 
 pub trait Quote {
-    fn add_tokens(&mut self, _: impl IntoTokens);
+    fn add_punct_join(&mut self, ch: char);
+    fn add_punct(&mut self, ch: char);
+    fn add_ident(&mut self, name: &str);
+    fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut Self));
+    fn add_parsed_lit(&mut self, s: &str);
 
-    fn add<U>(&mut self, token: U)
-    where
-        U: Into<TokenTree>;
-
-    fn add_punct_join(&mut self, ch: char) {
-        self.add(Punct::new(ch, Spacing::Joint));
-    }
-
-    fn add_punct(&mut self, ch: char) {
-        self.add(Punct::new(ch, Spacing::Alone));
+    fn add_tokens(&mut self, tokens: impl IntoTokens<Stream = Self>) {
+        tokens.into_tokens(self);
     }
 
     fn add_punct2(&mut self, ch: char) {
-        self.add(Punct::new(ch, Spacing::Joint));
-        self.add(Punct::new(ch, Spacing::Alone));
+        self.add_punct_join(ch);
+        self.add_punct(ch);
     }
 
     fn add_puncts(&mut self, ch: char, ch2: char) {
-        self.add(Punct::new(ch, Spacing::Joint));
-        self.add(Punct::new(ch2, Spacing::Alone));
+        self.add_punct_join(ch);
+        self.add_punct(ch2);
     }
 
     fn add_idents(&mut self, names: &[&str]) {
@@ -52,84 +33,40 @@ pub trait Quote {
             self.add_ident(name);
         }
     }
-
-    fn add_ident(&mut self, name: &str) {
-        self.add(Ident::new(name, Span::call_site()));
-    }
-
-    fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
-        self.add(group(delimiter, f));
-    }
-
-    fn add_parsed_lit(&mut self, s: &str) {
-        self.add(Literal::from_str(s).expect("invalid literal"));
-    }
-
-    fn add_ident_span(&mut self, name: &str, span: Span) {
-        self.add(Ident::new(name, span));
-    }
-}
-
-pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> Group {
-    let mut stream = TokenStream::new();
-    f(&mut stream);
-    let delimiter = match delimiter {
-        '{' => Delimiter::Brace,
-        '[' => Delimiter::Bracket,
-        '(' => Delimiter::Parenthesis,
-        _ => Delimiter::None,
-    };
-    Group::new(delimiter, stream)
 }
 
 pub trait IntoTokens {
-    fn into_tokens(self, s: &mut TokenStream);
-}
-
-impl<T: quote::ToTokens> IntoTokens for T {
-    fn into_tokens(self, s: &mut TokenStream) {
-        self.to_tokens(s)
-    }
+    type Stream;
+    fn into_tokens(self, s: &mut Self::Stream);
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Token<T>(pub T);
 
-pub fn quote<F>(f: F) -> Token<F>
-where
-    F: FnOnce(&mut TokenStream),
-{
-    Token(f)
-}
+// pub fn quote<F, Q: Quote>(f: F) -> Token<F>
+// where
+//     F: FnOnce(&mut Q),
+// {
+//     Token(f)
+// }
 
-impl<F> IntoTokens for Token<F>
+impl<F, Q: Quote> IntoTokens for Token<F>
 where
-    F: FnOnce(&mut TokenStream),
+    F: FnOnce(&mut Q),
 {
-    fn into_tokens(self, s: &mut TokenStream) {
+    type Stream = Q;
+    fn into_tokens(self, s: &mut Q) {
         self.0(s)
     }
 }
 
-impl<T: IntoTokens> IntoTokens for Token<Option<T>> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        if let Some(v) = self.0 {
-            T::into_tokens(v, s)
-        }
-    }
-}
-
-impl IntoTokens for Token<Group> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        s.extend(iter::once(TokenTree::Group(self.0)));
-    }
-}
-
-impl IntoTokens for Token<TokenStream> {
-    fn into_tokens(self, s: &mut TokenStream) {
-        s.extend(iter::once(self.0));
-    }
-}
+// impl<T: IntoTokens<Q>, Q: Quote> IntoTokens<Q> for Token<Option<T>> {
+//     fn into_tokens(self, s: &mut Q) {
+//         if let Some(v) = self.0 {
+//             T::into_tokens(v, s)
+//         }
+//     }
+// }
 
 impl<T: fmt::Display> fmt::Display for Token<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -137,7 +74,7 @@ impl<T: fmt::Display> fmt::Display for Token<T> {
     }
 }
 
-impl<T> Deref for Token<T> {
+impl<T> std::ops::Deref for Token<T> {
     type Target = T;
 
     #[inline]
@@ -146,7 +83,7 @@ impl<T> Deref for Token<T> {
     }
 }
 
-impl<T> DerefMut for Token<T> {
+impl<T> std::ops::DerefMut for Token<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
