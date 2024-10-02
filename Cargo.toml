@@ -3,7 +3,7 @@ members = ["quote2-macros"]
 
 [package]
 name = "quote2"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 
 license = "MIT"

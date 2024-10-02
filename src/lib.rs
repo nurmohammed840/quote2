@@ -3,6 +3,7 @@ pub use proc_macro2;
 
 use proc_macro2::*;
 pub use quote2_macros::quote;
+pub use quote2_macros::quote_spanned;
 use std::{
     fmt, iter,
     ops::{Deref, DerefMut},
@@ -33,8 +34,20 @@ pub trait Quote {
         self.add(Punct::new(ch, Spacing::Joint));
     }
 
+    fn add_punct_join_span(&mut self, span: Span, ch: char) {
+        let mut t = Punct::new(ch, Spacing::Joint);
+        t.set_span(span);
+        self.add(t);
+    }
+
     fn add_punct(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Alone));
+    }
+
+    fn add_punct_span(&mut self, span: Span, ch: char) {
+        let mut p = Punct::new(ch, Spacing::Alone);
+        p.set_span(span);
+        self.add(p);
     }
 
     fn add_punct2(&mut self, ch: char) {
@@ -42,9 +55,19 @@ pub trait Quote {
         self.add(Punct::new(ch, Spacing::Alone));
     }
 
+    fn add_punct2_span(&mut self, span: Span, ch: char) {
+        self.add_punct_join_span(span, ch);
+        self.add_punct_span(span, ch);
+    }
+
     fn add_puncts(&mut self, ch: char, ch2: char) {
         self.add(Punct::new(ch, Spacing::Joint));
         self.add(Punct::new(ch2, Spacing::Alone));
+    }
+
+    fn add_puncts_span(&mut self, span: Span, ch: char, ch2: char) {
+        self.add_punct_join_span(span, ch);
+        self.add_punct_span(span, ch2);
     }
 
     fn add_idents(&mut self, names: &[&str]) {
@@ -53,20 +76,38 @@ pub trait Quote {
         }
     }
 
+    fn add_idents_span(&mut self, span: Span, names: &[&str]) {
+        for name in names {
+            self.add_ident_span(span, name);
+        }
+    }
+
     fn add_ident(&mut self, name: &str) {
         self.add(Ident::new(name, Span::call_site()));
+    }
+
+    fn add_ident_span(&mut self, span: Span, name: &str) {
+        self.add(Ident::new(name, span));
     }
 
     fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
         self.add(group(delimiter, f));
     }
 
+    fn add_group_span(&mut self, span: Span, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
+        let mut g = group(delimiter, f);
+        g.set_span(span);
+        self.add(g);
+    }
+
     fn add_parsed_lit(&mut self, s: &str) {
         self.add(Literal::from_str(s).expect("invalid literal"));
     }
 
-    fn add_ident_span(&mut self, name: &str, span: Span) {
-        self.add(Ident::new(name, span));
+    fn add_parsed_lit_span(&mut self, span: Span, s: &str) {
+        let mut l = Literal::from_str(s).expect("invalid literal");
+        l.set_span(span);
+        self.add(l);
     }
 }
 

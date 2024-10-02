@@ -15,9 +15,10 @@ pub trait Tokens {
     where
         U: Into<TokenTree>;
 
-    fn punct_join(&mut self, ch: char) {
-        self.add(Punct::new(ch, Spacing::Joint));
-    }
+    // fn punct_join(&mut self, ch: char) {
+    //     self.add(Punct::new(ch, Spacing::Joint));
+    // }
+
     fn punct(&mut self, ch: char) {
         self.add(Punct::new(ch, Spacing::Alone));
     }

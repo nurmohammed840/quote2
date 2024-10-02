@@ -1,32 +1,41 @@
+## quote2
+
 An alternative lightweight version of [quote](https://github.com/dtolnay/quote).
 
-Unlike `quote`, this library avoids cloning whenever possible. 
+## Features
 
+- Very lightweight and produces extremely lean, minimal code compare to `quote`
+- Unlike `quote`, `quote2` allows direct mutation of tokens without creating new
+  `TokenStream` instances, enhancing runtime performance.
+
+  similar to [write](https://doc.rust-lang.org/std/macro.write.html) macro.
 
 ### Example
 
-Add it as a dependency to your Rust project by adding the following line to your `Cargo.toml` file:
+Add it as a dependency to your Rust project by adding the following line to your
+`Cargo.toml` file:
 
 ```toml
 [dependencies]
-quote2 = "0.7"
+quote2 = "0.8"
 ```
-
 
 ```rust
 use quote2::{proc_macro2::TokenStream, quote, Quote};
 
-let body = quote(|tokens| {
-    for i in 0..3 {
-        quote!(tokens, {
-            println!("{}", #i);
-        });
-    }
+let body = quote(|t| {
+    (1..7).for_each(|n| {
+        if n % 2 == 0 {
+            quote!(t, {
+                println!("{}", #n);
+            });
+        }
+    });
 });
 
-let mut tokens = TokenStream::new();
-quote!(tokens, {
-    fn name() {
+let mut t = TokenStream::new();
+quote!(t, {
+    fn main() {
         #body
     }
 });
@@ -35,9 +44,9 @@ quote!(tokens, {
 Generated code:
 
 ```rust
-fn name() {
-    println!("{}", 0i32);
-    println!("{}", 1i32);
+fn main() {
     println!("{}", 2i32);
+    println!("{}", 4i32);
+    println!("{}", 6i32);
 }
 ```
