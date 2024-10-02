@@ -17,4 +17,4 @@ exclude = ["/quote2-macros",  ".*", "/tests"]
 [dependencies]
 proc-macro2 = "1"
 quote = { version = "1", default-features = false }
-quote2-macros = { version = "0.7", path = "./quote2-macros" }
+quote2-macros = { version = "0.8", path = "./quote2-macros" }
