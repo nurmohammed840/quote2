@@ -83,11 +83,11 @@ pub trait Quote {
     }
 
     fn add_ident(&mut self, name: &str) {
-        self.add(Ident::new(name, Span::call_site()));
+        self.add(ident_maybe_raw(name, Span::call_site()));
     }
 
     fn add_ident_span(&mut self, span: Span, name: &str) {
-        self.add(Ident::new(name, span));
+        self.add(ident_maybe_raw(name, span));
     }
 
     fn add_group(&mut self, delimiter: char, f: impl FnOnce(&mut TokenStream)) {
@@ -108,6 +108,14 @@ pub trait Quote {
         let mut l = Literal::from_str(s).expect("invalid literal");
         l.set_span(span);
         self.add(l);
+    }
+}
+
+fn ident_maybe_raw(id: &str, span: Span) -> Ident {
+    if let Some(id) = id.strip_prefix("r#") {
+        Ident::new_raw(id, span)
+    } else {
+        Ident::new(id, span)
     }
 }
 
