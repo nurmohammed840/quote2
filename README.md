@@ -24,13 +24,13 @@ quote2 = "0.8"
 use quote2::{proc_macro2::TokenStream, quote, Quote};
 
 let body = quote(|t| {
-    (1..7).for_each(|n| {
+    for n in 1..7 {
         if n % 2 == 0 {
             quote!(t, {
                 println!("{}", #n);
             });
         }
-    });
+    }
 });
 
 let mut t = TokenStream::new();
