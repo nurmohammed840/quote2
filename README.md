@@ -2,6 +2,13 @@
 
 An alternative lightweight version of [quote](https://github.com/dtolnay/quote).
 
+[![Crates.io][crates-badge]][crates-url]
+[![Documentation](https://docs.rs/quote2/badge.svg)](https://docs.rs/quote2)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+[crates-badge]: https://img.shields.io/crates/v/quote2.svg
+[crates-url]: https://crates.io/crates/quote2
+
 ## Features
 
 - Very lightweight and produces extremely lean, minimal code compare to `quote`

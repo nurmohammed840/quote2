@@ -90,7 +90,6 @@ fn test_array() {
     let _ = quote!(#ref_array);
 }
 
-
 #[test]
 fn test_advanced() {
     let generics = &quote!( <'a, T> );
