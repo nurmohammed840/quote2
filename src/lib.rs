@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 pub use proc_macro2;
+pub mod utils;
 
 use proc_macro2::*;
 pub use quote2_macros::quote;
@@ -143,6 +144,13 @@ impl<T: quote::ToTokens> IntoTokens for T {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Token<T>(pub T);
+
+impl<T> From<T> for Token<T> {
+    #[inline]
+    fn from(value: T) -> Self {
+        Self(value)
+    }
+}
 
 pub fn quote<F>(f: F) -> Token<F>
 where
