@@ -1,4 +1,4 @@
-use quote::ToTokens;
+// use quote::ToTokens;
 
 #[macro_export]
 macro_rules! quote {
@@ -31,14 +31,19 @@ impl<T> From<T> for QuoteIter<T> {
     }
 }
 
-impl<I> quote2::IntoTokens for QuoteIter<I>
+impl<I> quote::ToTokens for QuoteIter<I>
 where
-    I: IntoIterator,
+    I: IntoIterator + Clone,
     I::Item: quote::ToTokens,
 {
-    fn into_tokens(self, tokens: &mut proc_macro2::TokenStream) {
-        for tt in self.0.into_iter() {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        for tt in self.0.clone().into_iter() {
             tt.to_tokens(tokens);
         }
     }
+    // fn into_tokens(self, tokens: &mut proc_macro2::TokenStream) {
+    //     for tt in self.0.into_iter() {
+    //         tt.to_tokens(tokens);
+    //     }
+    // }
 }

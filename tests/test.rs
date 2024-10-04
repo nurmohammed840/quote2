@@ -77,7 +77,7 @@ fn test_substitution() {
 
 #[test]
 fn test_iter() {
-    let primes = QuoteIter([X, X, X, X]);
+    let primes = QuoteIter(&[X, X, X, X]);
     assert_eq!("X X X X", quote!(#primes).to_string());
 }
 
