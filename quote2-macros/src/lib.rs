@@ -112,7 +112,10 @@ fn expend(input: TokenStream, o: &mut TokenStream, span: Option<&Ident>, var: Id
                     Some(TokenTree::Ident(_)) if ch == '#' => {
                         let v = mem::replace(&mut peek, input.next());
                         o.ident("add_tokens");
-                        o.group(Delimiter::Parenthesis, |o| o.extend(v));
+                        o.group(Delimiter::Parenthesis, |o| {
+                            o.punct('&');
+                            o.extend(v)
+                        });
                     }
                     Some(TokenTree::Punct(next))
                         if curr.spacing() == Spacing::Joint
