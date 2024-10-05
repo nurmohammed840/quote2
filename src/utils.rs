@@ -1,10 +1,10 @@
-use crate::Token;
+use crate::QuoteFn;
 use proc_macro2::TokenStream;
 
 pub fn quote_rep<'a, I, T>(
     iter: I,
     f: impl Fn(&mut TokenStream, T) + 'a,
-) -> Token<impl Fn(&mut TokenStream) + 'a>
+) -> QuoteFn<impl Fn(&mut TokenStream) + 'a>
 where
     I: IntoIterator<Item = T> + 'a,
     I: Clone,

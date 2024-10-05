@@ -1,8 +1,5 @@
-mod tokens;
-use std::mem;
-
 use proc_macro::*;
-use tokens::Tokens;
+use std::mem;
 
 /// # Example
 /// ```rust
@@ -88,181 +85,163 @@ pub fn quote_spanned(input: TokenStream) -> TokenStream {
 }
 
 fn expend(input: TokenStream, o: &mut TokenStream, span: Option<&Ident>, var: Ident) {
-    let mut input = input.into_iter();
-    let mut idents = Idents::default();
-    let mut peek = input.next();
+    let mut input = input.into_iter().peekable();
+    let mut items = TokenStream::new();
 
-    while let Some(tt) = peek.take() {
-        peek = input.next();
+    while let Some(tree) = input.next() {
+        match tree {
+            TokenTree::Punct(punct) => {
+                let ch = punct.as_char();
+                if ch == '#' && matches!(input.peek(), Some(TokenTree::Ident(_))) {
+                    write_extender(&mut items, o, &var);
+                    let v = input.next();
 
-        if let TokenTree::Ident(name) = tt {
-            idents.add(&name.to_string());
-            continue;
-        }
-        if !idents.is_empty() {
-            idents.take().write(o, span, var.clone());
-        }
-
-        o.add(var.clone());
-        o.punct('.');
-        match tt {
-            TokenTree::Punct(curr) => {
-                let ch = curr.as_char();
-                match peek {
-                    Some(TokenTree::Ident(_)) if ch == '#' => {
-                        let v = mem::replace(&mut peek, input.next());
-                        o.ident("add_tokens");
-                        o.group(Delimiter::Parenthesis, |o| {
-                            o.punct('&');
-                            o.extend(v)
-                        });
-                    }
-                    Some(TokenTree::Punct(next))
-                        if curr.spacing() == Spacing::Joint
-                            && next.spacing() == Spacing::Alone
-                            && next.as_char() != '#' =>
-                    {
-                        let next_ch = next.as_char();
-                        let is_punct2 = ch == next_ch;
-                        peek = input.next();
-
-                        o.ident(match (is_punct2, span.is_some()) {
-                            (true, true) => "add_punct2_span",
-                            (true, false) => "add_punct2",
-                            (false, true) => "add_puncts_span",
-                            (false, false) => "add_puncts",
-                        });
-                        o.group(Delimiter::Parenthesis, |o| {
-                            add_span(o, span);
-                            o.char(ch);
-                            if !is_punct2 {
-                                o.punct(',');
-                                o.char(next_ch);
-                            }
-                        });
-                    }
-                    _ => {
-                        o.ident(match (curr.spacing(), span.is_some()) {
-                            (Spacing::Joint, true) => "add_punct_join_span",
-                            (Spacing::Alone, true) => "add_punct_span",
-                            (Spacing::Joint, false) => "add_punct_join",
-                            (Spacing::Alone, false) => "add_punct",
-                        });
-                        o.group(Delimiter::Parenthesis, |o| {
-                            add_span(o, span);
-                            o.char(ch)
-                        });
-                    }
+                    o.extend([
+                        tt(var.clone()),
+                        tt::punct('.'),
+                        tt::ident("add_tokens"),
+                        tt::group('(', |o| {
+                            add(o, tt::punct('&'));
+                            o.extend(v);
+                        }),
+                        tt::punct(';'),
+                    ]);
+                } else {
+                    let varient_ty = match (punct.spacing(), span.is_some()) {
+                        (Spacing::Joint, true) => "punct_join_span",
+                        (Spacing::Alone, true) => "punct_span",
+                        (Spacing::Joint, false) => "punct_join",
+                        (Spacing::Alone, false) => "punct",
+                    };
+                    varient(&mut items, varient_ty, |o| {
+                        add_span(o, span);
+                        add(o, tt::char(ch));
+                    });
                 }
             }
             TokenTree::Group(group) => {
-                o.ident(if span.is_some() {
-                    "add_group_span"
+                let varient_ty = if span.is_some() {
+                    "group_span"
                 } else {
-                    "add_group"
-                });
-                o.group(Delimiter::Parenthesis, |o| {
+                    "group"
+                };
+                varient(&mut items, varient_ty, |o| {
                     add_span(o, span);
 
                     let var = Ident::new("__o", Span::call_site());
-                    o.char(match group.delimiter() {
-                        Delimiter::None => '_',
-                        Delimiter::Brace => '{',
-                        Delimiter::Bracket => '[',
-                        Delimiter::Parenthesis => '(',
-                    });
-                    o.punct(',');
-                    o.punct('|');
-                    o.add(var.clone());
-                    o.punct('|');
-                    o.group(Delimiter::Brace, |o| {
-                        expend(group.stream(), o, span, var);
-                    });
+                    o.extend([
+                        tt::char(match group.delimiter() {
+                            Delimiter::None => '_',
+                            Delimiter::Brace => '{',
+                            Delimiter::Bracket => '[',
+                            Delimiter::Parenthesis => '(',
+                        }),
+                        tt::punct(','),
+                        tt::punct('|'),
+                        tt(var.clone()),
+                        tt::punct('|'),
+                        tt::group('{', |o| {
+                            expend(group.stream(), o, span, var);
+                        }),
+                    ]);
+                });
+            }
+            TokenTree::Ident(ident) => {
+                let varient_ty = if span.is_some() {
+                    "ident_span"
+                } else {
+                    "ident"
+                };
+                varient(&mut items, varient_ty, |o| {
+                    add_span(o, span);
+                    add(o, Literal::string(&ident.to_string()));
                 });
             }
             TokenTree::Literal(lit) => {
-                o.ident(if span.is_some() {
-                    "add_parsed_lit_span"
+                let varient_ty = if span.is_some() {
+                    "parsed_lit_span"
                 } else {
-                    "add_parsed_lit"
-                });
-                o.group(Delimiter::Parenthesis, |o| {
+                    "parsed_lit"
+                };
+                varient(&mut items, varient_ty, |o| {
                     add_span(o, span);
-                    o.add(Literal::string(&lit.to_string()));
+                    add(o, Literal::string(&lit.to_string()));
                 });
             }
-            TokenTree::Ident(_) => {}
         }
-        o.punct(';');
     }
-    if !idents.is_empty() {
-        idents.write(o, span, var);
+    write_extender(&mut items, o, &var);
+}
+
+fn write_extender(items: &mut TokenStream, o: &mut TokenStream, var: &Ident) {
+    if !items.is_empty() {
+        let items = mem::take(items);
+        o.extend([
+            tt(var.clone()),
+            tt::punct('.'),
+            tt::ident("extend"),
+            tt::group('(', |o| {
+                add(o, Group::new(Delimiter::Bracket, items));
+            }),
+            tt::punct(';'),
+        ]);
     }
+}
+
+fn add(o: &mut TokenStream, t: impl Into<TokenTree>) {
+    o.extend(Some(t.into()));
 }
 
 fn add_span(o: &mut TokenStream, span: Option<&Ident>) {
     if let Some(spanned) = span {
-        o.add(spanned.clone());
-        o.punct(',');
+        o.extend([tt(spanned.clone()), tt::punct(',')]);
     }
 }
 
-#[derive(Default)]
-struct Idents {
-    // 0 = None, 1 = Mono, 2 = Poly;
-    size: u8,
-    stream: TokenStream,
+fn varient(t: &mut TokenStream, varient_ty: &str, f: impl FnOnce(&mut TokenStream)) {
+    t.extend([
+        tt::punct_joined(':'),
+        tt::punct(':'),
+        tt::ident("quote2"),
+        tt::punct_joined(':'),
+        tt::punct(':'),
+        tt::ident("tt"),
+        tt::punct_joined(':'),
+        tt::punct(':'),
+        tt::ident(varient_ty),
+        tt::group('(', f),
+        tt::punct(','),
+    ]);
 }
 
-impl Idents {
-    fn add(&mut self, s: &str) {
-        // Poly
-        if self.size > 0 {
-            self.stream.punct(',');
-        }
-        self.stream.add(Literal::string(s));
-        if self.size < 2 {
-            self.size += 1;
-        }
+fn tt<T: Into<TokenTree>>(tt: T) -> TokenTree {
+    tt.into()
+}
+
+mod tt {
+    use super::*;
+    pub fn punct_joined(ch: char) -> TokenTree {
+        TokenTree::from(Punct::new(ch, Spacing::Joint))
+    }
+    pub fn punct(ch: char) -> TokenTree {
+        TokenTree::from(Punct::new(ch, Spacing::Alone))
+    }
+    pub fn ident(string: &str) -> TokenTree {
+        TokenTree::from(Ident::new(string, Span::call_site()))
+    }
+    pub fn char(ch: char) -> TokenTree {
+        TokenTree::from(Literal::character(ch))
     }
 
-    fn take(&mut self) -> Self {
-        mem::take(self)
-    }
-
-    fn is_empty(&self) -> bool {
-        self.size == 0
-    }
-
-    fn write(self, o: &mut TokenStream, span: Option<&Ident>, var: Ident) {
-        o.add(var);
-        o.punct('.');
-
-        match self.size {
-            1 => {
-                o.ident(if span.is_some() {
-                    "add_ident_span"
-                } else {
-                    "add_ident"
-                });
-                o.group(Delimiter::Parenthesis, |o| {
-                    add_span(o, span);
-                    o.extend(self.stream);
-                });
-            }
-            _ => {
-                o.ident(if span.is_some() {
-                    "add_idents_span"
-                } else {
-                    "add_idents"
-                });
-                o.group(Delimiter::Parenthesis, |o| {
-                    add_span(o, span);
-                    o.punct('&');
-                    o.add(Group::new(Delimiter::Bracket, self.stream));
-                });
-            }
-        }
-        o.punct(';');
+    pub fn group(delimiter: char, f: impl FnOnce(&mut TokenStream)) -> TokenTree {
+        let mut stream = TokenStream::new();
+        f(&mut stream);
+        let delimiter = match delimiter {
+            '{' => Delimiter::Brace,
+            '[' => Delimiter::Bracket,
+            '(' => Delimiter::Parenthesis,
+            _ => Delimiter::None,
+        };
+        Group::new(delimiter, stream).into()
     }
 }

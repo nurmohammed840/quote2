@@ -14,7 +14,6 @@ macro_rules! quote {
 #[macro_export]
 macro_rules! quote_spanned {
     ($span:tt => $($tts: tt)*) => {{
-        use quote2::Quote;
         let mut g = TokenStream::new();
         quote2::quote_spanned!($span, g, {
             $($tts)*
