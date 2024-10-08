@@ -200,8 +200,6 @@ fn add_span(o: &mut TokenStream, span: Option<&Ident>) {
 
 fn varient(t: &mut TokenStream, varient_ty: &str, f: impl FnOnce(&mut TokenStream)) {
     t.extend([
-        tt::punct_joined(':'),
-        tt::punct(':'),
         tt::ident("quote2"),
         tt::punct_joined(':'),
         tt::punct(':'),

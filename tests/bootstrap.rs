@@ -40,9 +40,4 @@ where
             tt.to_tokens(tokens);
         }
     }
-    // fn into_tokens(self, tokens: &mut proc_macro2::TokenStream) {
-    //     for tt in self.0.into_iter() {
-    //         tt.to_tokens(tokens);
-    //     }
-    // }
 }

@@ -31,14 +31,17 @@ pub fn punct_span(span: Span, ch: char) -> TokenTree {
     p.into()
 }
 
+#[inline]
 pub fn ident(name: &str) -> TokenTree {
     ident_maybe_raw(name, Span::call_site()).into()
 }
 
+#[inline]
 pub fn ident_span(span: Span, name: &str) -> TokenTree {
     ident_maybe_raw(name, span).into()
 }
 
+#[inline]
 pub fn parsed_lit(s: &str) -> TokenTree {
     Literal::from_str(s).expect("invalid literal").into()
 }

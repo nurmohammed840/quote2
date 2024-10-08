@@ -1,22 +1,22 @@
 #![doc = include_str!("../README.md")]
 use core::fmt;
 
-pub use proc_macro2;
 #[doc(hidden)]
 pub mod tt;
 pub mod utils;
+pub use proc_macro2;
 
-use proc_macro2::TokenStream;
-use proc_macro2::TokenTree;
-pub use quote2_macros::quote;
-pub use quote2_macros::quote_spanned;
+use proc_macro2::{TokenStream, TokenTree};
+pub use quote::{format_ident, ToTokens};
+pub use quote2_macros::{quote, quote_spanned};
 
 pub trait Quote: Extend<TokenTree> {
-    fn add_tokens(&mut self, _: impl quote::ToTokens);
+    fn add_tokens(&mut self, _: impl ToTokens);
 }
 
 impl Quote for TokenStream {
-    fn add_tokens(&mut self, t: impl quote::ToTokens) {
+    #[inline]
+    fn add_tokens(&mut self, t: impl ToTokens) {
         t.to_tokens(self);
     }
 }

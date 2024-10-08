@@ -24,7 +24,7 @@ Add it as a dependency to your Rust project by adding the following line to your
 
 ```toml
 [dependencies]
-quote2 = "0.8"
+quote2 = "0.9"
 ```
 
 ```rust
@@ -50,7 +50,7 @@ quote!(t, {
 
 Generated code:
 
-```rust
+```rust no_run
 fn main() {
     println!("{}", 2i32);
     println!("{}", 4i32);
